@@ -1,4 +1,4 @@
-package com.lib.auth.security.configuration;
+package com.lib.auth.security.manager;
 
 import java.security.Principal;
 

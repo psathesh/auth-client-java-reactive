@@ -12,8 +12,8 @@ import org.apache.commons.logging.LogFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.UserDetailsRepositoryReactiveAuthenticationManager;
+import org.springframework.security.authorization.ReactiveAuthorizationManager;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.core.userdetails.UserDetailsMapFactoryBean;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
@@ -21,24 +21,19 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.core.userdetails.MapReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.web.server.MatcherSecurityWebFilterChain;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
 import org.springframework.security.web.server.authentication.ServerAuthenticationEntryPointFailureHandler;
-import org.springframework.security.web.server.authorization.ExceptionTranslationWebFilter;
-import org.springframework.security.web.server.context.SecurityContextServerWebExchangeWebFilter;
+import org.springframework.security.web.server.context.NoOpServerSecurityContextRepository;
 import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
 import org.springframework.security.web.server.util.matcher.ServerWebExchangeMatcher;
-import org.springframework.web.server.WebFilter;
 
-import com.lib.auth.context.CustomSecurityContextServerWebExchangeWebFilter;
-import com.lib.auth.security.exception.ApplicationAccessDeniedHandler;
 import com.lib.auth.security.exception.ApplicationAuthenticationEntryPoint;
 import com.lib.auth.security.exception.ApplicationAuthenticationSuccessHandler;
+import com.lib.auth.security.manager.RbsAuthenticationManager;
+import com.lib.auth.security.manager.RbsAuthorizationManager;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
+@SuppressWarnings("unused")
 @ConfigurationProperties(prefix = "service.endpoint.security")
 @Configuration
 @EnableWebFluxSecurity
@@ -68,13 +63,18 @@ public class BasicSecurityConfiguration {
             return Collections.<UserDetails>emptyList();
         }
     }
-    
-    public UserDetailsRepositoryReactiveAuthenticationManager reactiveAuthenticationManager() {
-        return new UserDetailsRepositoryReactiveAuthenticationManager(reactiveUserDetailsService());
-    }
+
     
     private List<SecurityWebFilterChain> securityWebFilterChains = new ArrayList<>();
 
+    public AuthenticationWebFilter authenticationFilter() {
+        AuthenticationWebFilter authenticationFilter = new AuthenticationWebFilter(new RbsAuthenticationManager());
+        authenticationFilter.setSecurityContextRepository(NoOpServerSecurityContextRepository.getInstance());
+        authenticationFilter.setAuthenticationSuccessHandler(new ApplicationAuthenticationSuccessHandler());
+        authenticationFilter.setAuthenticationFailureHandler(new ServerAuthenticationEntryPointFailureHandler(new ApplicationAuthenticationEntryPoint()));
+        return authenticationFilter;
+    }
+    
     @Bean
     public List<SecurityWebFilterChain> getSecurityWebFilterChains() {
         LOGGER.debug("Invoking the webflux security chain list");
@@ -91,33 +91,14 @@ public class BasicSecurityConfiguration {
         http.addFilterAt(new CustomSecurityContextServerWebExchangeWebFilter(), SecurityWebFiltersOrder.SECURITY_CONTEXT_SERVER_WEB_EXCHANGE);
         **/
         
-        new ApplicationAuthenticationSuccessHandler();
-        SecurityWebFilterChain securityWebFilterChain = http.csrf().disable()
+        http.addFilterAt(authenticationFilter(), SecurityWebFiltersOrder.HTTP_BASIC);
+        http.exceptionHandling().authenticationEntryPoint(new ApplicationAuthenticationEntryPoint());
+        
+        return http.csrf().disable()
                 .securityMatcher(basicPattern)
                 .authorizeExchange()
-                    .pathMatchers("/v1/student/**").hasAuthority("student")
-                    .pathMatchers("/v1/teacher/**").hasAuthority("teacher")
-                    .pathMatchers("/v1/openurl/**").permitAll()
-                    .pathMatchers("/v1/context/**").access(new RbsAuthorizationManager<>())
-                .and().authenticationManager(reactiveAuthenticationManager()).httpBasic()
+                    .pathMatchers("/v1/teacher/**").access(new RbsAuthorizationManager<>())
                 .and().build();
-
-        exceptionHandling(securityWebFilterChain.getWebFilters().collectList(), basicPattern);
-        return securityWebFilterChain;
-
     }
-    
-    public void exceptionHandling(Mono<List<WebFilter>> webFilter, ServerWebExchangeMatcher matcher) {
-        LOGGER.debug("Setting entry points and access denied Handlers");
-        webFilter.block().forEach(filter -> {
-            if (filter instanceof ExceptionTranslationWebFilter) {
-                ((ExceptionTranslationWebFilter) filter).setAccessDeniedHandler(new ApplicationAccessDeniedHandler(HttpStatus.FORBIDDEN));
-                ((ExceptionTranslationWebFilter) filter).setAuthenticationEntryPoint(new ApplicationAuthenticationEntryPoint());
-            } else if (filter instanceof AuthenticationWebFilter) {
-                ((AuthenticationWebFilter) filter).setAuthenticationFailureHandler(new ServerAuthenticationEntryPointFailureHandler(new ApplicationAuthenticationEntryPoint()));
-                ((AuthenticationWebFilter) filter).setRequiresAuthenticationMatcher(matcher);
-                ((AuthenticationWebFilter) filter).setAuthenticationSuccessHandler(new ApplicationAuthenticationSuccessHandler());
-            }
-        });
-    }
+
 }

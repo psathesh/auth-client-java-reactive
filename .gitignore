@@ -1,0 +1,11 @@
+/.gradle/
+/.settings/
+.checkstyle
+/bin/
+/build/
+/bkp/
+/.scannerwork/
+.idea
+.DS_Store
+.project
+.classpath

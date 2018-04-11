@@ -10,6 +10,7 @@ import org.springframework.security.web.server.context.SecurityContextServerWebE
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+@SuppressWarnings("unused")
 public class ApplicationAuthenticationSuccessHandler
     implements ServerAuthenticationSuccessHandler {
     

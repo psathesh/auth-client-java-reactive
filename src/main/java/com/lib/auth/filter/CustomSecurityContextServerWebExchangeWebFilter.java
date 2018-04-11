@@ -1,4 +1,4 @@
-package com.lib.auth.context;
+package com.lib.auth.filter;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -12,6 +12,7 @@ import org.springframework.web.server.WebFilterChain;
 
 import reactor.core.publisher.Mono;
 
+@SuppressWarnings("unused")
 public class CustomSecurityContextServerWebExchangeWebFilter implements WebFilter {
 
     private static final Log LOGGER = LogFactory.getLog(CustomSecurityContextServerWebExchangeWebFilter.class);

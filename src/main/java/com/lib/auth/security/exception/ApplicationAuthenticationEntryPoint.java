@@ -20,7 +20,7 @@ public class ApplicationAuthenticationEntryPoint extends HttpBasicServerAuthenti
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ApplicationAuthenticationEntryPoint.class);
 
-    private static final String SERVICE_NAME = "RBS_Auth_Client";
+    private static final String SERVICE_NAME = "Service";
 
     private DataBufferFactory dataBufferFactory = new DefaultDataBufferFactory();
 
