@@ -1,0 +1,81 @@
+
+buildscript {
+    ext {
+        springBootVersion = '2.0.0.RELEASE'
+    }
+    repositories {
+        mavenCentral()
+        maven { url "https://repo.spring.io/snapshot" }
+        maven { url "https://repo.spring.io/milestone" }
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'maven-publish'
+
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+
+apply plugin: 'checkstyle'
+apply plugin: 'pmd'
+apply plugin: 'jacoco'
+
+
+sourceCompatibility = "1.8"
+targetCompatibility = "1.8"
+
+archivesBaseName = "${rootProject.name}"
+group = "com.lib.auth"
+version ="1.2.0-SNAPSHOT"
+
+apply from: file('gradle/dependencies.gradle')
+
+jar {
+    enabled = true
+}
+
+bootJar.enabled = false
+
+
+task wrapper(type: Wrapper) {
+    gradleVersion = '4.5'
+}
+
+checkstyle {
+    ignoreFailures = true
+    toolVersion = '6.0'
+}
+
+pmd {
+  toolVersion = '5.0.1'
+  ruleSetConfig = rootProject.resources.text.fromFile('src/main/resources/pmd-rulesets.xml')
+  ignoreFailures = true
+}
+
+jacoco {
+    reportsDir = file("$buildDir/reports/jacoco")
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled true
+        csv.enabled true
+    }
+}
+
+test.finalizedBy jacocoTestReport
+
+
+/** **/
+apply plugin: 'application'
+
+applicationDefaultJvmArgs = [ 
+    "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
+]
+
+
+
